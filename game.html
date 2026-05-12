@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dino Runner</title>
+<title>🐰 Кролик Бежит Домой</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
-background: #f7f7f7;
+background: #87CEEB;
 display: flex;
 justify-content: center;
 align-items: center;
@@ -31,7 +31,7 @@ display: flex;
 flex-direction: column;
 justify-content: center;
 align-items: center;
-background: rgba(247,247,247,0.85);
+background: rgba(135,206,235,0.85);
 z-index: 10;
 transition: opacity 0.3s;
 }
@@ -66,16 +66,25 @@ color: #535353;
 z-index: 5;
 font-weight: bold;
 }
+#carrotScore {
+position: absolute;
+top: 15px; left: 20px;
+font-size: 20px;
+color: #FF6B35;
+z-index: 5;
+font-weight: bold;
+}
 </style>
 </head>
 <body>
 
 <div id="gameContainer">
   <canvas id="gameCanvas"></canvas>
+  <div id="carrotScore">🥕 0</div>
   <div id="score">00000</div>
   <div id="overlay">
-    <h1>🦕 DINO RUNNER</h1>
-    <p>Нажмите ПРОБЕЛ или коснитесь экрана для прыжка</p>
+    <h1>🐰 Кролик Бежит Домой</h1>
+    <p>Нажмите ПРОБЕЛ или коснитесь экрана для прыжка. Собирайте морковки!</p>
     <button class="restart-btn" id="startBtn">СТАРТ</button>
   </div>
 </div>
@@ -85,6 +94,7 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const overlay = document.getElementById('overlay');
 const scoreEl = document.getElementById('score');
+const carrotScoreEl = document.getElementById('carrotScore');
 const startBtn = document.getElementById('startBtn');
 
 // --- Размеры ---
@@ -96,6 +106,7 @@ canvas.height = H;
 let gameRunning = false;
 let gameOver = false;
 let score = 0;
+let carrotsCollected = 0;
 let highScore = 0;
 let gameSpeed = 6;
 let frameCount = 0;
@@ -103,17 +114,16 @@ let frameCount = 0;
 // --- Земля ---
 const GROUND_Y = H - 50;
 
-// --- Динозавр ---
-const dino = {
+// --- Кролик ---
+const rabbit = {
   x: 80,
   y: GROUND_Y,
   w: 44,
-  h: 48,
+  h: 40,
   vy: 0,
   gravity: 0.6,
   jumpForce: -13,
   grounded: true,
-  ducking: false,
   legFrame: 0,
   legTimer: 0,
 
@@ -140,52 +150,91 @@ const dino = {
   },
 
   draw() {
-    ctx.fillStyle = '#535353';
     const x = this.x;
     let y = this.y - this.h;
-    let w = this.w;
-    let h = this.h;
-
-    // Тело
-    ctx.fillRect(x + 10, y + 4, 24, 28);
+    
+    // Тело (белое)
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.ellipse(x + 22, y + 20, 18, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
     // Голова
-    ctx.fillRect(x + 18, y, 26, 20);
-    // Глаз
-    ctx.fillStyle = '#f7f7f7';
-    ctx.fillRect(x + 34, y + 4, 4, 4);
-    ctx.fillStyle = '#535353';
-    // Рот
-    ctx.fillRect(x + 36, y + 14, 8, 2);
-    // Шея
-    ctx.fillRect(x + 16, y + 18, 14, 10);
-    // Хвост
-    ctx.fillRect(x, y + 8, 14, 6);
-    ctx.fillRect(x - 4, y + 4, 8, 8);
-
+    ctx.beginPath();
+    ctx.ellipse(x + 32, y + 8, 12, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Уши длинные
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.ellipse(x + 28, y - 8, 4, 12, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x + 36, y - 8, 4, 12, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Внутренняя часть ушей (розовая)
+    ctx.fillStyle = '#FFB6C1';
+    ctx.beginPath();
+    ctx.ellipse(x + 28, y - 8, 2, 8, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x + 36, y - 8, 2, 8, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Глаз (черный)
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    ctx.arc(x + 36, y + 6, 2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Нос (розовый)
+    ctx.fillStyle = '#FFB6C1';
+    ctx.beginPath();
+    ctx.arc(x + 42, y + 10, 2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Хвост (пушистый белый)
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(x + 6, y + 18, 6, 0, Math.PI * 2);
+    ctx.fill();
+    
     // Ноги (анимация)
+    ctx.fillStyle = '#FFFFFF';
     if (!this.grounded) {
-      // В воздухе — обе ноги вниз
-      ctx.fillRect(x + 12, y + h - 2, 6, 8);
-      ctx.fillRect(x + 24, y + h - 2, 6, 8);
+      // В воздухе — обе ноги поджаты
+      ctx.beginPath();
+      ctx.ellipse(x + 14, y + 32, 5, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(x + 26, y + 32, 5, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
     } else {
       if (this.legFrame === 0) {
-        ctx.fillRect(x + 12, y + h - 2, 6, 8);
-        ctx.fillRect(x + 26, y + h - 6, 6, 4);
+        ctx.beginPath();
+        ctx.ellipse(x + 14, y + 34, 5, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(x + 28, y + 32, 5, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
       } else {
-        ctx.fillRect(x + 12, y + h - 6, 6, 4);
-        ctx.fillRect(x + 26, y + h - 2, 6, 8);
+        ctx.beginPath();
+        ctx.ellipse(x + 14, y + 32, 5, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(x + 28, y + 34, 5, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
-    // Руки
-    ctx.fillRect(x + 30, y + 22, 4, 10);
   },
 
   getHitbox() {
     return {
-      x: this.x + 4,
+      x: this.x + 8,
       y: this.y - this.h + 4,
-      w: this.w - 8,
-      h: this.h - 4
+      w: this.w - 16,
+      h: this.h - 8
     };
   }
 };
@@ -194,81 +243,115 @@ const dino = {
 let obstacles = [];
 let obstacleTimer = 0;
 
+// --- Морковки ---
+let carrots = [];
+let carrotTimer = 0;
+
+function spawnCarrot() {
+  const heights = [GROUND_Y - 20, GROUND_Y - 50, GROUND_Y - 80];
+  carrots.push({
+    x: W + 20,
+    y: heights[Math.floor(Math.random() * heights.length)],
+    w: 20,
+    h: 24,
+    collected: false
+  });
+}
+
+function drawCarrot(carrot) {
+  if (carrot.collected) return;
+  
+  const x = carrot.x;
+  const y = carrot.y - carrot.h;
+  
+  // Оранжевая часть морковки
+  ctx.fillStyle = '#FF6B35';
+  ctx.beginPath();
+  ctx.moveTo(x + 10, y);
+  ctx.lineTo(x + 18, y + 18);
+  ctx.lineTo(x + 2, y + 18);
+  ctx.closePath();
+  ctx.fill();
+  
+  // Зелёные листья
+  ctx.fillStyle = '#228B22';
+  ctx.beginPath();
+  ctx.ellipse(x + 10, y - 2, 4, 6, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x + 10, y - 2, 4, 6, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x + 10, y - 4, 3, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function getCarrotHitbox(carrot) {
+  return {
+    x: carrot.x + 4,
+    y: carrot.y - carrot.h + 4,
+    w: carrot.w - 8,
+    h: carrot.h - 8
+  };
+}
+
 function spawnObstacle() {
-  const types = ['cactus-small', 'cactus-tall', 'cactus-group', 'bird'];
-  let type;
-  if (score > 300) {
-    type = types[Math.floor(Math.random() * types.length)];
-  } else {
-    type = types[Math.floor(Math.random() * 3)];
-  }
+  const types = ['rock', 'log', 'stump'];
+  let type = types[Math.floor(Math.random() * types.length)];
 
   let obs = { x: W + 20, type };
 
   switch(type) {
-    case 'cactus-small':
-      obs.w = 16; obs.h = 30; obs.y = GROUND_Y;
+    case 'rock':
+      obs.w = 24; obs.h = 20; obs.y = GROUND_Y;
       break;
-    case 'cactus-tall':
-      obs.w = 18; obs.h = 42; obs.y = GROUND_Y;
+    case 'log':
+      obs.w = 30; obs.h = 16; obs.y = GROUND_Y;
       break;
-    case 'cactus-group':
-      obs.w = 36; obs.h = 34; obs.y = GROUND_Y;
-      break;
-    case 'bird':
-      obs.w = 30; obs.h = 20;
-      const birdHeights = [GROUND_Y - 20, GROUND_Y - 50, GROUND_Y - 75];
-      obs.y = birdHeights[Math.floor(Math.random() * birdHeights.length)];
-      obs.wingFrame = 0;
-      obs.wingTimer = 0;
+    case 'stump':
+      obs.w = 20; obs.h = 24; obs.y = GROUND_Y;
       break;
   }
   obstacles.push(obs);
 }
 
 function drawObstacle(obs) {
-  ctx.fillStyle = '#535353';
+  ctx.fillStyle = '#8B4513';
   const x = obs.x, y = obs.y - obs.h;
 
   switch(obs.type) {
-    case 'cactus-small':
-      ctx.fillRect(x + 4, y, 8, obs.h);
-      ctx.fillRect(x, y + 8, 4, 12);
-      ctx.fillRect(x + 12, y + 12, 4, 10);
+    case 'rock':
+      ctx.fillStyle = '#696969';
+      ctx.beginPath();
+      ctx.ellipse(x + 12, y + 10, 12, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#808080';
+      ctx.beginPath();
+      ctx.ellipse(x + 8, y + 8, 4, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
       break;
 
-    case 'cactus-tall':
-      ctx.fillRect(x + 5, y, 8, obs.h);
-      ctx.fillRect(x, y + 10, 6, 16);
-      ctx.fillRect(x + 12, y + 16, 6, 14);
+    case 'log':
+      ctx.fillStyle = '#8B4513';
+      ctx.beginPath();
+      ctx.ellipse(x + 15, y + 8, 15, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#A0522D';
+      ctx.beginPath();
+      ctx.ellipse(x + 8, y + 6, 4, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(x + 22, y + 10, 3, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
       break;
 
-    case 'cactus-group':
-      // Три кактуса
-      ctx.fillRect(x + 2, y + 6, 8, obs.h - 6);
-      ctx.fillRect(x + 14, y, 8, obs.h);
-      ctx.fillRect(x + 26, y + 4, 8, obs.h - 4);
-      // Ветки
-      ctx.fillRect(x - 2, y + 14, 6, 4);
-      ctx.fillRect(x + 22, y + 10, 6, 4);
-      break;
-
-    case 'bird':
-      // Тело
-      ctx.fillRect(x + 4, y + 8, 22, 8);
-      // Клюв
-      ctx.fillRect(x + 26, y + 10, 6, 4);
-      // Крылья
-      obs.wingTimer++;
-      if (obs.wingTimer > 8) {
-        obs.wingTimer = 0;
-        obs.wingFrame = (obs.wingFrame + 1) % 2;
-      }
-      if (obs.wingFrame === 0) {
-        ctx.fillRect(x + 8, y, 14, 8);
-      } else {
-        ctx.fillRect(x + 8, y + 16, 14, 8);
-      }
+    case 'stump':
+      ctx.fillStyle = '#8B4513';
+      ctx.fillRect(x + 2, y, 16, obs.h);
+      ctx.fillStyle = '#A0522D';
+      ctx.beginPath();
+      ctx.ellipse(x + 10, y + 4, 6, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
       break;
   }
 }
@@ -387,7 +470,7 @@ function update() {
   if (!gameRunning || gameOver) return;
 
   frameCount++;
-  dino.update();
+  rabbit.update();
 
   // Скорость растёт
   gameSpeed = 6 + Math.floor(score / 100) * 0.5;
@@ -418,6 +501,29 @@ function update() {
   });
   obstacles = obstacles.filter(obs => obs.x > -60);
 
+  // Морковки
+  carrotTimer++;
+  if (carrotTimer > 40 + Math.random() * 40) {
+    carrotTimer = 0;
+    spawnCarrot();
+  }
+
+  carrots.forEach(carrot => {
+    carrot.x -= gameSpeed;
+    
+    // Сбор морковок
+    if (!carrot.collected) {
+      const rabbitBox = rabbit.getHitbox();
+      const carrotBox = getCarrotHitbox(carrot);
+      if (rectsCollide(rabbitBox, carrotBox)) {
+        carrot.collected = true;
+        carrotsCollected++;
+        carrotScoreEl.textContent = '🥕 ' + carrotsCollected;
+      }
+    }
+  });
+  carrots = carrots.filter(c => c.x > -60 && !c.collected);
+
   // Облака
   if (Math.random() < 0.005) spawnCloud();
   clouds.forEach(c => { c.x -= c.speed; });
@@ -427,14 +533,14 @@ function update() {
   stars.forEach(s => { s.twinkle += 0.05; });
 
   // Столкновения
-  const dinoBox = dino.getHitbox();
+  const rabbitBox = rabbit.getHitbox();
   for (let obs of obstacles) {
     const obsBox = getObstacleHitbox(obs);
-    if (rectsCollide(dinoBox, obsBox)) {
+    if (rectsCollide(rabbitBox, obsBox)) {
       gameOver = true;
-      spawnParticles(dino.x + 20, dino.y - 24);
+      spawnParticles(rabbit.x + 20, rabbit.y - 20);
       if (score > highScore) highScore = Math.floor(score);
-      showOverlay('GAME OVER', `Счёт: ${Math.floor(score)} | Рекорд: ${highScore}`, 'ЗАНОВО');
+      showOverlay('GAME OVER', `Счёт: ${Math.floor(score)} | Морковки: ${carrotsCollected} | Рекорд: ${highScore}`, 'ЗАНОВО');
       return;
     }
   }
@@ -446,12 +552,12 @@ function draw() {
   ctx.clearRect(0, 0, W, H);
 
   // Фон
-  ctx.fillStyle = '#f7f7f7';
+  ctx.fillStyle = '#87CEEB';
   ctx.fillRect(0, 0, W, H);
 
   // Звёзды
   stars.forEach(s => {
-    ctx.fillStyle = `rgba(83,83,83,${0.3 + 0.3 * Math.sin(s.twinkle)})`;
+    ctx.fillStyle = `rgba(255,255,255,${0.3 + 0.3 * Math.sin(s.twinkle)})`;
     ctx.fillRect(s.x, s.y, s.size, s.size);
   });
 
@@ -461,11 +567,14 @@ function draw() {
   // Земля
   drawGround();
 
+  // Морковки
+  carrots.forEach(drawCarrot);
+
   // Препятствия
   obstacles.forEach(drawObstacle);
 
-  // Дино
-  dino.draw();
+  // Кролик
+  rabbit.draw();
 
   // Частицы
   drawParticles();
@@ -488,7 +597,7 @@ function gameLoop() {
 // --- UI ---
 function showOverlay(title, subtitle, btnText) {
   overlay.classList.remove('hidden');
-  overlay.querySelector('h1').textContent = `🦕 ${title}`;
+  overlay.querySelector('h1').textContent = `🐰 ${title}`;
   overlay.querySelector('p').textContent = subtitle;
   startBtn.textContent = btnText;
 }
@@ -501,14 +610,18 @@ function resetGame() {
   gameOver = false;
   gameRunning = true;
   score = 0;
+  carrotsCollected = 0;
+  carrotScoreEl.textContent = '🥕 0';
   gameSpeed = 6;
   frameCount = 0;
   obstacles = [];
   obstacleTimer = 0;
+  carrots = [];
+  carrotTimer = 0;
   particles = [];
-  dino.y = GROUND_Y;
-  dino.vy = 0;
-  dino.grounded = true;
+  rabbit.y = GROUND_Y;
+  rabbit.vy = 0;
+  rabbit.grounded = true;
   hideOverlay();
 }
 
@@ -522,7 +635,7 @@ function handleJump() {
     resetGame();
     return;
   }
-  dino.jump();
+  rabbit.jump();
 }
 
 document.addEventListener('keydown', e => {
@@ -532,8 +645,8 @@ document.addEventListener('keydown', e => {
   }
   if (e.code === 'ArrowDown' && gameRunning && !gameOver) {
     // Быстрое падение
-    if (!dino.grounded) {
-      dino.vy += 3;
+    if (!rabbit.grounded) {
+      rabbit.vy += 3;
     }
   }
 });
@@ -552,7 +665,7 @@ startBtn.addEventListener('click', () => {
 });
 
 // Запуск
-showOverlay('DINO RUNNER', 'Нажмите ПРОБЕЛ или коснитесь экрана для прыжка', 'СТАРТ');
+showOverlay('Кролик Бежит Домой', 'Нажмите ПРОБЕЛ или коснитесь экрана для прыжка. Собирайте морковки!', 'СТАРТ');
 gameLoop();
 </script>
 </body>
